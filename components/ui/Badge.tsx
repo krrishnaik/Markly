@@ -7,7 +7,7 @@ interface BadgeProps {
 }
 
 export const Badge: React.FC<BadgeProps> = ({ status, size = 'md' }) => {
-  let colorClass = 'bg-stone-100 text-stone-600 border-stone-200';
+  let colorClass = 'bg-slate-100 text-slate-600 border-slate-200';
   let label = status;
 
   switch (status) {
@@ -15,22 +15,22 @@ export const Badge: React.FC<BadgeProps> = ({ status, size = 'md' }) => {
     case 'COMPLETED':
     case 'APPROVED':
     case 'Active':
-      colorClass = 'bg-emerald-50 text-emerald-800 border-emerald-200'; // Success
+      colorClass = 'bg-emerald-50 text-emerald-700 border-emerald-200'; 
       break;
     case AttendanceStatus.ABSENT:
     case 'REJECTED':
-      colorClass = 'bg-accent-50 text-accent-700 border-accent-100'; // Muted Red
+      colorClass = 'bg-red-50 text-red-700 border-red-200'; 
       break;
     case AttendanceStatus.DECLARED:
     case 'SCHEDULED':
-      colorClass = 'bg-primary-50 text-primary-700 border-primary-100'; // Muted Orange
+      colorClass = 'bg-primary-50 text-primary-700 border-primary-200';
       label = status === AttendanceStatus.DECLARED ? 'DECLARED' : label;
       break;
     case AttendanceStatus.EXCUSED:
-      colorClass = 'bg-secondary-100 text-secondary-800 border-secondary-200'; // Soft Yellow
+      colorClass = 'bg-amber-50 text-amber-700 border-amber-200'; 
       break;
     case AttendanceStatus.NOT_DECLARED:
-      colorClass = 'bg-stone-100 text-stone-500 border-stone-200';
+      colorClass = 'bg-slate-100 text-slate-500 border-slate-200';
       break;
   }
 

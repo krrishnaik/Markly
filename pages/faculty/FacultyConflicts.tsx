@@ -3,104 +3,111 @@ import { MOCK_CONFLICTS, MOCK_USERS } from '../../services/mockData';
 import { Button } from '../../components/ui/Button';
 
 export const FacultyConflicts: React.FC = () => {
-  const [selectedConflictId, setSelectedConflictId] = useState(MOCK_CONFLICTS[0].id);
-  
-  const conflict = MOCK_CONFLICTS.find(c => c.id === selectedConflictId);
-  // Mock students affected by this conflict
-  const affectedStudents = MOCK_USERS.filter(u => u.role === 'STUDENT').map(u => ({
-    ...u,
-    club: 'Coding Club',
-    status: Math.random() > 0.5 ? 'Present (Club)' : 'Pending'
-  }));
+  // Mock grouping structure for the demo
+  const groupedConflicts = {
+    '3rd Year': {
+      'Div A': [
+        { student: 'Alex Student', club: 'Coding Club', status: 'Pending', id: 'u1' },
+        { student: 'Emma Watson', club: 'Coding Club', status: 'Pending', id: 'u5' }
+      ],
+      'Div B': [
+        { student: 'John Doe', club: 'Debate Society', status: 'Pending', id: 'uX' }
+      ]
+    },
+    '2nd Year': {
+      'Div A': [
+         { student: 'Michael Chen', club: 'Robotics Team', status: 'Pending', id: 'u4' }
+      ]
+    }
+  };
 
-  const handleExcuse = (studentId: string) => {
-    alert(`Excused student ${studentId} for Club Activity`);
+  const [expandedYear, setExpandedYear] = useState<string | null>('3rd Year');
+
+  const handleAction = (studentId: string, action: 'excuse' | 'reject') => {
+    alert(`${action === 'excuse' ? 'Excused' : 'Marked Absent'}: Student ${studentId}`);
   };
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold text-stone-900 tracking-tight">Lecture Conflicts</h2>
-        <p className="text-stone-500 mt-2 text-lg">Manage attendance for students missing lectures due to club activities.</p>
+      <div className="border-b border-slate-200 pb-6">
+        <h2 className="text-3xl font-bold text-slate-800 tracking-tight">Lecture Conflicts</h2>
+        <p className="text-slate-500 mt-2 text-lg">Review absentees due to club activities. Grouped by Year and Division.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Left: Conflict List */}
-        <div className="md:col-span-1 space-y-4">
-            <h3 className="text-xs font-bold text-stone-400 uppercase tracking-widest pl-1">Detected Conflicts</h3>
-            <div className="space-y-3">
-            {MOCK_CONFLICTS.map(c => (
-                <div 
-                    key={c.id}
-                    onClick={() => setSelectedConflictId(c.id)}
-                    className={`p-5 rounded-xl border cursor-pointer transition-all duration-200 relative overflow-hidden group ${
-                        selectedConflictId === c.id 
-                        ? 'bg-white border-primary-500 shadow-md ring-1 ring-primary-500/20' 
-                        : 'bg-white border-stone-200 hover:border-primary-300 hover:shadow-sm'
-                    }`}
-                >
-                    {selectedConflictId === c.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-500"></div>}
-                    <div className="flex justify-between items-start mb-2">
-                        <span className={`font-bold text-lg ${selectedConflictId === c.id ? 'text-primary-800' : 'text-stone-700'}`}>{c.subjectCode}</span>
-                        <span className="text-xs bg-rose-50 text-rose-700 border border-rose-100 px-2 py-0.5 rounded-full font-semibold">{c.affectedStudents} students</span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Left: Summary Stats */}
+        <div className="lg:col-span-1 space-y-6">
+            <div className="bg-bg-card p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Conflict Summary</h3>
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                        <span className="text-slate-600">Total Absentees</span>
+                        <span className="text-xl font-bold text-slate-900">12</span>
                     </div>
-                    <div className="text-sm font-medium text-stone-800 mb-2">{c.subjectName}</div>
-                    <div className="text-xs text-stone-500 flex items-center gap-2">
-                        <span>{c.date}</span>
-                        <span className="w-1 h-1 rounded-full bg-stone-300"></span>
-                        <span>{c.timeSlot}</span>
+                     <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                        <span className="text-slate-600">Affected Divisions</span>
+                        <span className="text-xl font-bold text-slate-900">3</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-slate-600">Involved Clubs</span>
+                        <span className="text-xl font-bold text-slate-900">3</span>
                     </div>
                 </div>
-            ))}
+            </div>
+
+            <div className="bg-amber-50 p-6 rounded-xl border border-amber-100">
+                 <h4 className="font-bold text-amber-700 mb-2">Policy Reminder</h4>
+                 <p className="text-sm text-amber-600/80">Students are eligible for attendance credit only if the club activity duration overlapped with more than 40 minutes of the lecture.</p>
             </div>
         </div>
 
-        {/* Right: Student List */}
-        <div className="md:col-span-2">
-            <div className="bg-white rounded-xl shadow-card border border-stone-200 overflow-hidden h-full flex flex-col">
-                <div className="px-8 py-6 border-b border-stone-200 bg-stone-50/50 flex justify-between items-center">
-                    <div>
-                        <h3 className="font-bold text-stone-800">Affected Student List</h3>
-                        <p className="text-sm text-stone-500 mt-1">Reviewing for: <span className="font-semibold text-stone-700">{conflict?.subjectName}</span></p>
+        {/* Right: Grouped List */}
+        <div className="lg:col-span-2 space-y-6">
+            {Object.entries(groupedConflicts).map(([year, divs]) => (
+                <div key={year} className="bg-bg-card border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                    <div 
+                        className="px-6 py-4 bg-bg-DEFAULT flex justify-between items-center cursor-pointer hover:bg-slate-200 transition-colors"
+                        onClick={() => setExpandedYear(expandedYear === year ? null : year)}
+                    >
+                        <h3 className="font-bold text-lg text-slate-800">{year}</h3>
+                        <svg className={`w-5 h-5 text-slate-400 transition-transform ${expandedYear === year ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                     </div>
-                </div>
-                <div className="overflow-x-auto flex-1">
-                    <table className="min-w-full divide-y divide-stone-100">
-                        <thead className="bg-stone-50">
-                            <tr>
-                                <th className="px-8 py-4 text-left text-xs font-bold text-stone-500 uppercase tracking-wider">Student Details</th>
-                                <th className="px-8 py-4 text-left text-xs font-bold text-stone-500 uppercase tracking-wider">Club Event</th>
-                                <th className="px-8 py-4 text-left text-xs font-bold text-stone-500 uppercase tracking-wider">Club Status</th>
-                                <th className="px-8 py-4 text-right text-xs font-bold text-stone-500 uppercase tracking-wider">Lecture Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-stone-100">
-                            {affectedStudents.map(student => (
-                                <tr key={student.id} className="hover:bg-stone-50 transition-colors">
-                                    <td className="px-8 py-4 whitespace-nowrap">
-                                        <div className="text-sm font-bold text-stone-900">{student.name}</div>
-                                        <div className="text-xs text-stone-500 mt-0.5">{student.department} • {student.year}</div>
-                                    </td>
-                                    <td className="px-8 py-4 whitespace-nowrap text-sm text-stone-600 font-medium">
-                                        {student.club}
-                                    </td>
-                                    <td className="px-8 py-4 whitespace-nowrap">
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                                            Verified Present
-                                        </span>
-                                    </td>
-                                    <td className="px-8 py-4 whitespace-nowrap text-right">
-                                        <Button size="sm" variant="secondary" onClick={() => handleExcuse(student.id)} className="shadow-none border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300">
-                                            Mark Excused
-                                        </Button>
-                                    </td>
-                                </tr>
+                    
+                    {expandedYear === year && (
+                        <div className="p-6 space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                            {Object.entries(divs).map(([div, students]) => (
+                                <div key={div} className="relative pl-6 border-l-2 border-slate-200">
+                                    <h4 className="font-semibold text-primary-600 mb-4">{div}</h4>
+                                    
+                                    <div className="space-y-3">
+                                        {students.map((student, idx) => (
+                                            <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-bg-DEFAULT p-4 rounded-lg border border-slate-200 hover:border-slate-300 transition-all">
+                                                <div className="mb-3 sm:mb-0">
+                                                    <div className="font-bold text-slate-800">{student.student}</div>
+                                                    <div className="text-xs text-slate-500 mt-1 flex items-center gap-2">
+                                                        <span className="w-2 h-2 rounded-full bg-primary-500"></span>
+                                                        {student.club}
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="flex gap-2">
+                                                    <Button size="sm" variant="danger" onClick={() => handleAction(student.id, 'reject')}>
+                                                        Absent
+                                                    </Button>
+                                                    <Button size="sm" variant="secondary" className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300" onClick={() => handleAction(student.id, 'excuse')}>
+                                                        Excuse
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             ))}
-                        </tbody>
-                    </table>
+                        </div>
+                    )}
                 </div>
-            </div>
+            ))}
         </div>
       </div>
     </div>

@@ -18,7 +18,6 @@ export const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  // Clear fields when role changes to avoid confusion
   useEffect(() => {
     setEmail('');
     setPassword('');
@@ -67,32 +66,30 @@ export const Login: React.FC = () => {
   const roleCardClass = (active: boolean) => 
     `flex-1 p-3 text-sm font-semibold border rounded-lg cursor-pointer transition-all text-center select-none ${
       active 
-      ? 'border-primary-500 bg-primary-50 text-primary-700 shadow-sm ring-1 ring-primary-500/20' 
-      : 'border-stone-200 bg-white text-stone-500 hover:border-stone-300 hover:bg-stone-50'
+      ? 'border-primary-500 bg-primary-100/50 text-primary-800 shadow-sm ring-1 ring-primary-500/20' 
+      : 'border-slate-200 bg-bg-card text-slate-500 hover:border-slate-300 hover:bg-bg-DEFAULT'
     }`;
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center bg-[#fafaf9] overflow-hidden p-4">
-      {/* Background Bubbles (Warm Theme) */}
+    <div className="min-h-screen relative flex items-center justify-center bg-bg-DEFAULT overflow-hidden p-4">
+      {/* Background Decorative Elements - Warm Neutrals */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-5%] w-[600px] h-[600px] bg-secondary-100 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-blob"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-primary-100 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-[30%] left-[60%] w-[300px] h-[300px] bg-stone-200 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-blob animation-delay-4000"></div>
+        <div className="absolute top-[-10%] left-[-5%] w-[600px] h-[600px] bg-stone-200/50 rounded-full mix-blend-multiply filter blur-3xl opacity-60"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-primary-200/30 rounded-full mix-blend-multiply filter blur-3xl opacity-60"></div>
       </div>
 
-      <div ref={cardRef} className="relative z-10 w-full max-w-md bg-white/90 backdrop-blur-xl rounded-2xl shadow-soft border border-white/50 p-8 md:p-10">
+      <div ref={cardRef} className="relative z-10 w-full max-w-md bg-bg-card rounded-2xl shadow-xl border border-slate-200 p-8 md:p-10">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl mx-auto mb-5 flex items-center justify-center text-white shadow-lg shadow-primary-200">
+          <div className="w-14 h-14 bg-primary-600 rounded-xl mx-auto mb-5 flex items-center justify-center text-white shadow-lg shadow-primary-500/30">
             <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z"/></svg>
           </div>
-          <h1 className="text-2xl font-bold text-stone-900 tracking-tight">Welcome to Markly</h1>
-          <p className="text-stone-500 mt-2 text-sm">The Institutional Attendance Portal</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Welcome to Markly</h1>
+          <p className="text-slate-500 mt-2 text-sm">The Institutional Attendance Portal</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Role Selection */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Select Role</label>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Select Role</label>
             <div className="flex gap-3">
               <div 
                 className={roleCardClass(role === UserRole.STUDENT)}
@@ -117,15 +114,15 @@ export const Login: React.FC = () => {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1.5">College Email ID</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">College Email ID</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                 </div>
                 <input 
                     type="email" 
                     required
-                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-stone-200 rounded-lg focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder:text-stone-300 text-stone-900"
+                    className="w-full pl-10 pr-4 py-2.5 bg-bg-card border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder:text-slate-300 text-slate-900"
                     placeholder="you@college.edu"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -133,14 +130,13 @@ export const Login: React.FC = () => {
               </div>
             </div>
 
-            {/* Conditional Fields for Lead */}
             {role === UserRole.LEAD && (
-              <div className="p-5 bg-stone-50 rounded-xl border border-stone-200 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="p-5 bg-bg-DEFAULT rounded-xl border border-slate-200 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1.5">Select Club</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Select Club</label>
                   <div className="relative">
                     <select 
-                      className="w-full pl-4 pr-10 py-2.5 bg-white border border-stone-200 rounded-lg focus:ring-2 focus:ring-primary-500/50 outline-none appearance-none cursor-pointer text-stone-900"
+                      className="w-full pl-4 pr-10 py-2.5 bg-bg-card border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500/50 outline-none appearance-none cursor-pointer text-slate-900"
                       value={clubId}
                       onChange={(e) => setClubId(e.target.value)}
                     >
@@ -148,34 +144,34 @@ export const Login: React.FC = () => {
                         <option key={club.id} value={club.id}>{club.name}</option>
                       ))}
                     </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-stone-500">
+                    <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-500">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                     </div>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1.5">Club Password</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Club Password</label>
                   <div className="relative">
-                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
+                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                     </div>
                     <input 
                         type="password"
                         required 
                         placeholder="Enter secret key"
-                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-stone-200 rounded-lg focus:ring-2 focus:ring-primary-500/50 outline-none transition-all"
+                        className="w-full pl-10 pr-4 py-2.5 bg-bg-card border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500/50 outline-none transition-all"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                     />
                   </div>
-                  <p className="text-xs text-stone-400 mt-1.5">Provided by faculty coordinator</p>
+                  <p className="text-xs text-slate-400 mt-1.5">Provided by faculty coordinator</p>
                 </div>
               </div>
             )}
           </div>
 
           {error && (
-            <div className="p-3 bg-accent-50 text-accent-600 text-sm rounded-lg border border-accent-100 flex items-center">
+            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100 flex items-center">
               <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               {error}
             </div>
@@ -185,7 +181,7 @@ export const Login: React.FC = () => {
             {isLoading ? 'Verifying Credentials...' : 'Access Portal'}
           </Button>
 
-          <div className="pt-6 border-t border-stone-100 text-center">
+          <div className="pt-6 border-t border-slate-100 text-center">
             <button
               type="button"
               onClick={fillDemoCredentials}
@@ -196,7 +192,7 @@ export const Login: React.FC = () => {
           </div>
         </form>
 
-        <p className="text-center text-xs text-stone-400 mt-8">
+        <p className="text-center text-xs text-slate-400 mt-8">
           © 2023 Markly System. Unauthorized access is prohibited.
         </p>
       </div>
