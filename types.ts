@@ -16,6 +16,7 @@ export interface Club {
   id: string;
   name: string;
   category: string;
+  description?: string;
 }
 
 export interface User {
@@ -23,20 +24,25 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  department?: string;
+  // Student specific fields
+  admissionNumber?: string; 
+  branch?: string;          
   year?: string;
-  clubId?: string; // For Leads
+  joinedClubIds?: string[]; 
+  // Lead specific fields
+  clubId?: string;          
 }
 
 export interface Meeting {
   id: string;
   clubId: string;
   clubName: string;
-  title: string;
-  date: string; // ISO date string
-  startTime: string;
-  endTime: string;
-  location: string;
+  title: string;       // Purpose of meeting
+  description?: string;
+  date: string;        // YYYY-MM-DD
+  startTime: string;   // HH:MM
+  endTime: string;     // HH:MM
+  location: string;    // Venue
   status: 'SCHEDULED' | 'COMPLETED';
 }
 
@@ -45,8 +51,19 @@ export interface AttendanceRecord {
   meetingId: string;
   studentId: string;
   studentName: string;
+  studentAdmissionNumber?: string;
   status: AttendanceStatus;
   timestamp: string;
+}
+
+export interface Announcement {
+  id: string;
+  clubId: string;
+  clubName: string;
+  title: string;
+  content: string;
+  date: string;
+  priority?: 'NORMAL' | 'HIGH';
 }
 
 export interface LectureConflict {
