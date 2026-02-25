@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../context/AuthContext';
 
+// NEW: Firebase database imports!
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../firebase'; 
+
 declare const gsap: any;
 
 export const CreateMeet: React.FC = () => {
@@ -41,8 +45,9 @@ export const CreateMeet: React.FC = () => {
     if (validationError) setValidationError(null);
   };
 
-  // --- Logic: Validation & Submission ---
-  const handleSubmit = (e: React.FormEvent) => {
+  // --- Logic: Validation & REAL Submission ---
+  // Notice we added 'async' here so we can talk to the database
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError(null);
 
@@ -63,13 +68,29 @@ export const CreateMeet: React.FC = () => {
 
     setIsLoading(true);
 
-    // 3. Simulate Backend API Call with Delay
-    setTimeout(() => {
+    // 3. Save to Firebase Firestore Database
+    try {
+        // Point to the "meetings" collection in our database
+        const meetingsRef = collection(db, 'meetings');
+        
+        // Push the new meeting document securely
+        await addDoc(meetingsRef, {
+            ...formData,
+            // Extra metadata so we know who owns this meeting
+            createdBy: user?.id || user?.uid || 'unknown',
+            clubId: user?.clubId || null,
+            createdAt: serverTimestamp(),
+            status: 'scheduled' 
+        });
+
         setIsLoading(false);
-        // In real app: await api.createMeeting(formData);
-        alert(`Success! "${formData.title}" has been scheduled for ${formData.date}.`);
-        navigate('/dashboard');
-    }, 1500);
+        navigate('/dashboard'); 
+        
+    } catch (error) {
+        console.error("Error creating meeting:", error);
+        setValidationError("Failed to save to database. Check your connection.");
+        setIsLoading(false);
+    }
   };
 
   return (

@@ -1,12 +1,23 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole } from '../types';
-import { MOCK_USERS } from '../services/mockData';
+
+// Import Firebase tools
+import { auth, db } from '../firebase';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, role: UserRole, clubId?: string, password?: string) => Promise<boolean>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (email: string, password: string, name: string, role: UserRole, clubId?: string) => Promise<boolean>;
+  logout: () => Promise<void>;
   isLoading: boolean;
+  isInitialized: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -14,44 +25,138 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  const login = async (email: string, role: UserRole, clubId?: string, clubPassword?: string): Promise<boolean> => {
-    setIsLoading(true);
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 800));
+// --- INITIAL LOAD LISTENER ---
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // QUICK CHECK: If we already manually set the user in login/register, skip this!
+        setUser((currentUser) => {
+          if (currentUser?.id === firebaseUser.uid) {
+             return currentUser; // Keep existing state, avoid lag
+          }
+          return currentUser;
+        });
 
-    // Simple mock validation
-    const foundUser = MOCK_USERS.find(u => u.email === email && u.role === role);
-
-    if (foundUser) {
-      if (role === UserRole.LEAD) {
-        // Mock password check
-        if (clubPassword === 'club123' && clubId) {
-             // In a real app, we'd verify the user belongs to this club too
-             setUser({ ...foundUser, clubId }); // Ensure club context is set
-             setIsLoading(false);
-             return true;
-        } else {
-            setIsLoading(false);
-            return false;
+        // Only fetch if we DON'T have the user state yet (e.g., page refresh)
+        if (!user) {
+            try {
+              const docRef = doc(db, 'users', firebaseUser.uid);
+              const docSnap = await getDoc(docRef);
+              
+              if (docSnap.exists()) {
+                const userData = docSnap.data();
+                setUser({
+                  id: firebaseUser.uid,
+                  name: userData.name,
+                  email: userData.email,
+                  role: userData.role as UserRole,
+                  clubId: userData.clubId
+                });
+              }
+            } catch (error) {
+              console.error("Error fetching user data from Firestore:", error);
+            }
         }
+      } else {
+        setUser(null);
       }
-      setUser(foundUser);
+      setIsInitialized(true); 
+    });
+
+    return () => unsubscribe();
+  }, []); // We intentionally leave the dependency array empty here
+
+  // --- REAL LOGIN LOGIC ---
+  const login = async (email: string, password: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // FIX: Fetch the role and set the state immediately so the router doesn't kick us out
+      const docRef = doc(db, 'users', userCredential.user.uid);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        const userData = docSnap.data();
+        setUser({
+          id: userCredential.user.uid,
+          name: userData.name,
+          email: userData.email,
+          role: userData.role as UserRole,
+          clubId: userData.clubId
+        });
+      }
+
       setIsLoading(false);
       return true;
+    } catch (error) {
+      console.error("Login Error:", error);
+      setIsLoading(false);
+      return false;
     }
-
-    setIsLoading(false);
-    return false;
   };
 
-  const logout = () => {
-    setUser(null);
+  // --- REAL REGISTRATION LOGIC ---
+  const register = async (email: string, password: string, name: string, role: UserRole, clubId?: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      // 1. Create the user in Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      // 2. Save their extra details (role, name, etc.) in Firestore
+      const newUserData = {
+        name,
+        email,
+        role,
+        ...(clubId && { clubId })
+      };
+
+      await setDoc(doc(db, 'users', firebaseUser.uid), newUserData);
+
+      // FIX: Manually set the user state right now so the router knows their role
+      setUser({
+        id: firebaseUser.uid,
+        name: newUserData.name,
+        email: newUserData.email,
+        role: newUserData.role,
+        clubId: newUserData.clubId
+      });
+
+      setIsLoading(false);
+      return true;
+    } catch (error) {
+      console.error("Registration Error:", error);
+      setIsLoading(false);
+      return false;
+    }
+  };
+
+  // --- REAL LOGOUT LOGIC ---
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      await signOut(auth);
+      setUser(null); // Clear the state immediately
+    } catch (error) {
+      console.error("Logout Error:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
-      {children}
+    <AuthContext.Provider value={{ user, login, register, logout, isLoading, isInitialized }}>
+      {/* Wait for Firebase to initialize before rendering the app to prevent redirect bugs */}
+      {!isInitialized ? (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+           <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 };

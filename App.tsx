@@ -8,15 +8,40 @@ import { StudentAttendance } from './pages/student/StudentAttendance';
 import { LeadMarking } from './pages/lead/LeadMarking';
 import { FacultyConflicts } from './pages/faculty/FacultyConflicts';
 import { Profile } from './pages/Profile';
-// Import new pages
 import { Announcements } from './pages/Announcements';
 import { CreateMeet } from './pages/lead/CreateMeet';
+import { UserRole } from './types'; // Added this import to check roles
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+// --- UPGRADED PROTECTED ROUTE ---
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  allowedRoles?: UserRole[]; // Optional array of roles allowed to see the page
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
+  const { user, isLoading } = useAuth();
+
+  // 1. Wait for Firebase to finish checking auth state before doing anything
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  // 2. If nobody is logged in, kick them to the login page
   if (!user) {
     return <Navigate to="/login" replace />;
   }
+
+  // 3. If roles are specified, check if the user has permission to view this page
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    // If a student tries to go to /mark-attendance, send them back to the dashboard safely
+    return <Navigate to="/dashboard" replace />; 
+  }
+
+  // 4. User is logged in and authorized! Let them in.
   return <Layout>{children}</Layout>;
 };
 
@@ -25,7 +50,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       
-      {/* Dashboard */}
+      {/* --- SHARED ROUTES (Everyone can access) --- */}
       <Route 
         path="/dashboard" 
         element={
@@ -34,49 +59,11 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } 
       />
-
-      {/* Announcements (New) */}
       <Route 
         path="/announcements" 
         element={
           <ProtectedRoute>
             <Announcements />
-          </ProtectedRoute>
-        } 
-      />
-
-      {/* Create Meeting (New - Lead Only) */}
-      <Route 
-        path="/create-meeting" 
-        element={
-          <ProtectedRoute>
-            <CreateMeet />
-          </ProtectedRoute>
-        } 
-      />
-
-      {/* Existing Routes */}
-      <Route 
-        path="/attendance" 
-        element={
-          <ProtectedRoute>
-            <StudentAttendance />
-          </ProtectedRoute>
-        } 
-      />
-       <Route 
-        path="/mark-attendance" 
-        element={
-          <ProtectedRoute>
-            <LeadMarking />
-          </ProtectedRoute>
-        } 
-      />
-       <Route 
-        path="/conflicts" 
-        element={
-          <ProtectedRoute>
-            <FacultyConflicts />
           </ProtectedRoute>
         } 
       />
@@ -88,6 +75,46 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } 
       />
+
+      {/* --- LEAD ONLY ROUTES --- */}
+      <Route 
+        path="/create-meeting" 
+        element={
+          <ProtectedRoute allowedRoles={[UserRole.LEAD]}>
+            <CreateMeet />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/mark-attendance" 
+        element={
+          <ProtectedRoute allowedRoles={[UserRole.LEAD]}>
+            <LeadMarking />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* --- STUDENT ONLY ROUTES --- */}
+      <Route 
+        path="/attendance" 
+        element={
+          <ProtectedRoute allowedRoles={[UserRole.STUDENT]}>
+            <StudentAttendance />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* --- FACULTY ONLY ROUTES --- */}
+       <Route 
+        path="/conflicts" 
+        element={
+          <ProtectedRoute allowedRoles={[UserRole.FACULTY]}>
+            <FacultyConflicts />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Catch-all redirect */}
       <Route path="/" element={<Navigate to="/login" replace />} />
     </Routes>
   );

@@ -1,10 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UserRole, Meeting, AttendanceStatus } from '../types';
-import { MOCK_MEETINGS, MOCK_ATTENDANCE, CLUBS } from '../services/mockData';
+import { CLUBS } from '../services/mockData';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { useNavigate } from 'react-router-dom';
+
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 
 declare const gsap: any;
 
@@ -33,7 +36,7 @@ const MeetingCard: React.FC<{ meeting: Meeting, onClick?: () => void }> = ({ mee
         
         <div className="relative z-10">
             <div className="flex justify-between items-start mb-4">
-                <Badge status="SCHEDULED" size="sm" />
+                <Badge status={(meeting.status || 'SCHEDULED').toUpperCase()} size="sm" />
                 <span className="text-xs font-mono text-slate-400 bg-bg-DEFAULT px-2 py-1 rounded border border-slate-200">
                     {meeting.date}
                 </span>
@@ -64,44 +67,85 @@ const EmptyState: React.FC<{ message: string }> = ({ message }) => (
     </div>
 );
 
+const LoadingSpinner = () => (
+    <div className="col-span-full py-12 flex justify-center items-center">
+        <svg className="animate-spin h-8 w-8 text-primary-500" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+    </div>
+);
+
 // --- Role Views ---
 
 const StudentDashboard = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     
-    // Logic: Get meetings for clubs the student has joined
-    const myClubIds = user?.joinedClubIds || [];
-    const relevantMeetings = MOCK_MEETINGS.filter(m => myClubIds.includes(m.clubId));
-    
-    const upcoming = relevantMeetings
-        .filter(m => m.status === 'SCHEDULED')
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const [upcoming, setUpcoming] = useState<Meeting[]>([]);
+    const [history, setHistory] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    // Logic: Get past meetings where the student has an attendance record
-    const history = MOCK_ATTENDANCE
-        .filter(a => a.studentId === user?.id)
-        .map(record => {
-            const meeting = MOCK_MEETINGS.find(m => m.id === record.meetingId);
-            return { record, meeting };
-        })
-        .filter(item => item.meeting !== undefined)
-        .sort((a, b) => new Date(b.meeting!.date).getTime() - new Date(a.meeting!.date).getTime());
+    const getClubName = (id: string) => CLUBS.find(c => c.id === id)?.name || 'Unknown Club';
 
     useEffect(() => {
-        if (typeof gsap !== 'undefined') {
-            gsap.fromTo(".gsap-card", 
-                { y: 20, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: "power2.out", clearProps: "all" }
-            );
-        }
-    }, []);
+        if (!user?.id) return;
+
+        const myClubIds = user.joinedClubIds || [];
+        let allMeetings: Meeting[] = [];
+        let currentAttendanceRecords: any[] = [];
+
+        // Helper to combine and sort history whenever meetings or attendance updates
+        const updateHistoryView = (meetings: Meeting[], records: any[]) => {
+            const historyData = records.map(record => {
+                const meeting = meetings.find(m => m.id === record.meetingId);
+                return { record, meeting };
+            }).filter(item => item.meeting !== undefined)
+              .sort((a, b) => new Date(b.meeting!.date).getTime() - new Date(a.meeting!.date).getTime());
+            
+            setHistory(historyData);
+            setLoading(false);
+            
+            setTimeout(() => {
+                if (typeof gsap !== 'undefined') {
+                    gsap.fromTo(".gsap-card", 
+                        { y: 20, opacity: 0 },
+                        { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: "power2.out", clearProps: "all" }
+                    );
+                }
+            }, 100);
+        };
+
+        // Real-time listener for all meetings
+        const unsubMeetings = onSnapshot(collection(db, 'meetings'), (meetingsSnap) => {
+            allMeetings = meetingsSnap.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                clubName: getClubName(doc.data().clubId)
+            } as Meeting));
+
+            const relevantUpcoming = allMeetings
+                .filter(m => myClubIds.includes(m.clubId) && m.status?.toLowerCase() === 'scheduled')
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            
+            setUpcoming(relevantUpcoming);
+            updateHistoryView(allMeetings, currentAttendanceRecords);
+        });
+
+        // Real-time listener for student's personal attendance
+        const unsubAttendance = onSnapshot(query(collection(db, 'attendance'), where('studentId', '==', user.id)), (attSnap) => {
+            currentAttendanceRecords = attSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            updateHistoryView(allMeetings, currentAttendanceRecords);
+        });
+
+        return () => {
+            unsubMeetings();
+            unsubAttendance();
+        };
+    }, [user]);
 
     return (
         <div className="space-y-10">
             <SectionHeader 
-                title={`Welcome, ${user?.name.split(' ')[0]}`}
-                subtitle={`${user?.branch} • ${user?.year}`}
+                title={`Welcome, ${user?.name?.split(' ')[0] || 'Student'}`}
+                subtitle={`${user?.branch || 'General'} • ${user?.year || '1st Year'}`}
             />
 
             {/* Upcoming Section */}
@@ -112,7 +156,7 @@ const StudentDashboard = () => {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {upcoming.length > 0 ? (
+                    {loading ? <LoadingSpinner /> : upcoming.length > 0 ? (
                         upcoming.map(meeting => (
                             <MeetingCard key={meeting.id} meeting={meeting} />
                         ))
@@ -140,7 +184,9 @@ const StudentDashboard = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {history.length > 0 ? (
+                                {loading ? (
+                                    <tr><td colSpan={3}><LoadingSpinner /></td></tr>
+                                ) : history.length > 0 ? (
                                     history.map(({ record, meeting }) => (
                                         <tr key={record.id} className="hover:bg-bg-DEFAULT transition-colors">
                                             <td className="px-6 py-4 text-sm font-mono text-slate-500">
@@ -151,7 +197,7 @@ const StudentDashboard = () => {
                                                 <div className="text-xs text-slate-500">{meeting?.clubName}</div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <Badge status={record.status} size="sm" />
+                                                <Badge status={record.status.toUpperCase()} size="sm" />
                                             </td>
                                         </tr>
                                     ))
@@ -181,27 +227,52 @@ const StudentDashboard = () => {
 const LeadDashboard = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
-
-    // Logic: Lead sees meetings for their managed club
-    const myClub = CLUBS.find(c => c.id === user?.clubId);
-    const meetings = MOCK_MEETINGS.filter(m => m.clubId === user?.clubId);
     
-    const upcoming = meetings
-        .filter(m => m.status === 'SCHEDULED')
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        
-    const past = meetings
-        .filter(m => m.status === 'COMPLETED')
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const [upcoming, setUpcoming] = useState<Meeting[]>([]);
+    const [past, setPast] = useState<Meeting[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const myClub = CLUBS.find(c => c.id === user?.clubId);
 
     useEffect(() => {
-        if (typeof gsap !== 'undefined') {
-            gsap.fromTo(".gsap-card", 
-                { y: 20, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: "power2.out", clearProps: "all" }
-            );
-        }
-    }, []);
+        if (!user?.clubId) return;
+
+        const q = query(collection(db, 'meetings'), where('clubId', '==', user.clubId));
+        
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetched = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    clubName: myClub?.name || 'Your Club'
+                } as Meeting; 
+            });
+
+            const upcomingMeets = fetched
+                .filter(m => m.status?.toLowerCase() === 'scheduled')
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                
+            const pastMeets = fetched
+                .filter(m => m.status?.toLowerCase() === 'completed')
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+            setUpcoming(upcomingMeets);
+            setPast(pastMeets);
+            setLoading(false);
+
+            setTimeout(() => {
+                if (typeof gsap !== 'undefined') {
+                    gsap.fromTo(".gsap-card", 
+                        { y: 20, opacity: 0 },
+                        { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: "power2.out", clearProps: "all" }
+                    );
+                }
+            }, 100);
+        });
+
+        return () => unsubscribe();
+    }, [user?.clubId, myClub?.name]);
 
     return (
         <div className="space-y-10">
@@ -209,7 +280,7 @@ const LeadDashboard = () => {
                 title={`${myClub?.name || 'Committee'} Dashboard`} 
                 subtitle="Committee Lead Panel"
                 action={
-                    <Button onClick={() => alert("Navigate to Create Meet Page")} variant="primary" className="shadow-lg shadow-primary-500/20">
+                    <Button onClick={() => navigate('/create-meet')} variant="primary" className="shadow-lg shadow-primary-500/20">
                         <span className="mr-2">+</span> Create New Meet
                     </Button>
                 }
@@ -225,7 +296,7 @@ const LeadDashboard = () => {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {upcoming.length > 0 ? (
+                    {loading ? <LoadingSpinner /> : upcoming.length > 0 ? (
                         upcoming.map(meeting => (
                             <MeetingCard 
                                 key={meeting.id} 
@@ -257,7 +328,9 @@ const LeadDashboard = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {past.length > 0 ? (
+                            {loading ? (
+                                <tr><td colSpan={4}><LoadingSpinner /></td></tr>
+                            ) : past.length > 0 ? (
                                 past.map(meeting => (
                                     <tr key={meeting.id} className="hover:bg-bg-DEFAULT transition-colors">
                                         <td className="px-6 py-4 text-sm font-mono text-slate-500">
@@ -295,39 +368,72 @@ const LeadDashboard = () => {
 const FacultyDashboard = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    
+    const [recentActivity, setRecentActivity] = useState<Meeting[]>([]);
+    const [stats, setStats] = useState({ totalMeetings: 0, activeClubs: 0 });
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (typeof gsap !== 'undefined') {
-            gsap.fromTo(".gsap-card", 
-                { y: 20, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: "power2.out", clearProps: "all" }
-            );
-        }
+        // Fetch all meetings across clubs to generate dynamic faculty overview stats
+        const unsubMeetings = onSnapshot(collection(db, 'meetings'), (snapshot) => {
+            const meetings = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                clubName: CLUBS.find(c => c.id === doc.data().clubId)?.name || 'Unknown Club'
+            } as Meeting));
+
+            setStats({
+                totalMeetings: meetings.length,
+                activeClubs: new Set(meetings.map(m => m.clubId)).size
+            });
+
+            // Filter out just the 3 most recently completed meetings
+            const past = meetings
+                .filter(m => m.status?.toLowerCase() === 'completed')
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .slice(0, 3); 
+
+            setRecentActivity(past);
+            setLoading(false);
+
+            setTimeout(() => {
+                if (typeof gsap !== 'undefined') {
+                    gsap.fromTo(".gsap-card", 
+                        { y: 20, opacity: 0 },
+                        { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: "power2.out", clearProps: "all" }
+                    );
+                }
+            }, 100);
+        });
+
+        return () => unsubMeetings();
     }, []);
 
     return (
         <div className="space-y-10">
             <SectionHeader 
                 title="Faculty Overview" 
-                subtitle={`Prof. ${user?.name.split(' ')[1]} • ${user?.branch}`}
+                subtitle={`Prof. ${user?.name?.split(' ')[1] || ''} • ${user?.branch || 'General'}`}
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Status Card 1 */}
-                <div className="gsap-card p-6 bg-red-50 border border-red-100 rounded-xl flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-white text-red-600 flex items-center justify-center border border-red-100 shadow-sm text-xl">
-                        ⚠️
+                <div className="gsap-card p-6 bg-indigo-50 border border-indigo-100 rounded-xl flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-white text-indigo-600 flex items-center justify-center border border-indigo-100 shadow-sm text-xl">
+                        📊
                     </div>
                     <div>
-                        <h4 className="text-lg font-bold text-red-900">Action Required</h4>
-                        <p className="text-red-700 text-sm mt-1">2 Lecture conflicts detected this week.</p>
+                        <h4 className="text-lg font-bold text-indigo-900">System Activity</h4>
+                        <p className="text-indigo-700 text-sm mt-1">
+                            Tracking {stats.totalMeetings} total meetings across {stats.activeClubs} active clubs.
+                        </p>
                         <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="mt-3 text-red-700 hover:bg-red-100 -ml-2 font-semibold"
-                            onClick={() => navigate('/conflicts')}
+                            className="mt-3 text-indigo-700 hover:bg-indigo-100 -ml-2 font-semibold"
+                            onClick={() => navigate('/reports')}
                         >
-                            Resolve Conflicts →
+                            View Master Reports →
                         </Button>
                     </div>
                 </div>
@@ -338,8 +444,8 @@ const FacultyDashboard = () => {
                         ✅
                     </div>
                     <div>
-                        <h4 className="text-lg font-bold text-emerald-900">System Status</h4>
-                        <p className="text-emerald-700 text-sm mt-1">Attendance sync active. No errors reported.</p>
+                        <h4 className="text-lg font-bold text-emerald-900">Health Status</h4>
+                        <p className="text-emerald-700 text-sm mt-1">Real-time attendance syncing is active. No conflicts reported.</p>
                     </div>
                 </div>
             </div>
@@ -348,25 +454,32 @@ const FacultyDashboard = () => {
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
                          <span className="w-1.5 h-6 bg-slate-800 rounded-full"></span>
-                         Recent Activity
+                         Recently Completed Meetings
                     </h3>
                 </div>
+                
                 <div className="space-y-4">
-                    <div className="p-5 bg-bg-DEFAULT border border-slate-200 rounded-xl flex items-start gap-5 hover:border-slate-300 transition-colors">
-                        <div className="p-3 bg-white rounded-lg text-slate-500 shadow-sm border border-slate-100">
-                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-slate-800">Database Management (CS302)</h4>
-                            <p className="text-sm text-slate-600 mt-1 leading-relaxed">
-                                12 students marked present in <span className="font-medium text-slate-800">"Coding Club: Hackathon Prep"</span> during this lecture time.
-                            </p>
-                            <div className="mt-3 flex items-center gap-2 text-xs font-medium text-slate-500">
-                                <span className="bg-slate-200 px-2 py-1 rounded">Oct 25</span>
-                                <span>16:00 - 17:00</span>
+                    {loading ? <LoadingSpinner /> : recentActivity.length > 0 ? (
+                        recentActivity.map(activity => (
+                            <div key={activity.id} className="p-5 bg-bg-DEFAULT border border-slate-200 rounded-xl flex items-start gap-5 hover:border-slate-300 transition-colors">
+                                <div className="p-3 bg-white rounded-lg text-slate-500 shadow-sm border border-slate-100">
+                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-slate-800">{activity.title} ({activity.clubName})</h4>
+                                    <p className="text-sm text-slate-600 mt-1 leading-relaxed">
+                                        Meeting successfully concluded at venue: <span className="font-medium text-slate-800">{activity.location}</span>.
+                                    </p>
+                                    <div className="mt-3 flex items-center gap-2 text-xs font-medium text-slate-500">
+                                        <span className="bg-slate-200 px-2 py-1 rounded">{activity.date}</span>
+                                        <span>{activity.startTime} - {activity.endTime}</span>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                        ))
+                    ) : (
+                         <div className="text-sm text-slate-400 py-4">No recent meeting activity to show.</div>
+                    )}
                 </div>
             </div>
         </div>
