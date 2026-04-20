@@ -44,6 +44,7 @@ export interface Meeting {
   endTime: string;     // HH:MM
   location: string;    // Venue
   status: 'SCHEDULED' | 'COMPLETED';
+  createdBy?: string;
 }
 
 export interface AttendanceRecord {

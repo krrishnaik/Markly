@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { MOCK_MEETINGS, MOCK_ATTENDANCE, CLUBS } from '../../services/mockData';
+import { useAuth } from '../../context/AuthContext';
+import { db } from '../../firebase';
+import { collection, query, where, onSnapshot, getDocs, doc, setDoc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { MOCK_MEETINGS, MOCK_ATTENDANCE } from '../../services/mockData';
 import { Meeting, AttendanceStatus } from '../../types';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -7,17 +10,53 @@ import { Button } from '../../components/ui/Button';
 declare const gsap: any;
 
 export const StudentAttendance: React.FC = () => {
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
     const [isLocating, setIsLocating] = useState<string | null>(null);
 
-    // Mock Data Logic
-    const myClubIds = ['c1', 'c2']; // Simulating logged-in user's clubs
+    const [activeMeetings, setActiveMeetings] = useState<Meeting[]>([]);
+    const [historyRecords, setHistoryRecords] = useState<any[]>([]);
 
-    const activeMeetings = MOCK_MEETINGS.filter(m =>
-        m.status === 'SCHEDULED' && myClubIds.includes(m.clubId)
-    );
+    useEffect(() => {
+        if (!user?.id) return;
 
-    const history = MOCK_ATTENDANCE.filter(a => a.studentId === 'u1'); // Mock User ID
+        const myClubIds = (user as any).joinedClubIds || [];
+        let allMeetings: Meeting[] = [];
+
+        // Real-time listener for all meetings
+        const unsubMeetings = onSnapshot(collection(db, 'meetings'), snap => {
+            const fetchedMeetings = snap.docs.map(docSnap => {
+                const data = docSnap.data();
+                return {
+                    id: docSnap.id,
+                    clubId: data.clubId || '',
+                    clubName: data.clubName || 'Unknown Club',
+                    title: data.title || '(Untitled)',
+                    date: data.date || '',
+                    startTime: data.startTime || '',
+                    endTime: data.endTime || '',
+                    location: data.location || '',
+                    status: data.status || 'scheduled'
+                } as Meeting;
+            });
+            allMeetings = fetchedMeetings;
+
+            const relevantUpcoming = fetchedMeetings
+                .filter(m => (myClubIds.length === 0 || myClubIds.includes(m.clubId)) && m.status.toLowerCase() === 'scheduled')
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            
+            setActiveMeetings(relevantUpcoming);
+        });
+
+        // Real-time listener for history
+        const unsubAttendance = onSnapshot(query(collection(db, 'attendance'), where('studentId', '==', user.id)), snap => {
+            const records = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // We combine with all meetings later in the render loop or update state
+            setHistoryRecords(records);
+        });
+
+        return () => { unsubMeetings(); unsubAttendance(); };
+    }, [user]);
 
     // Animation
     useEffect(() => {
@@ -29,14 +68,29 @@ export const StudentAttendance: React.FC = () => {
         }
     }, [activeTab]);
 
-    const handleDeclare = (meetingId: string) => {
+    const handleDeclare = async (meetingId: string, status: 'attending' | 'not attending') => {
+        if (!user) return;
         setIsLocating(meetingId);
 
-        // Simulate Geolocation Delay
-        setTimeout(() => {
+        try {
+            await addDoc(collection(db, 'attendance'), {
+                meetingId,
+                studentId: user.id,
+                studentName: user.name || 'Unknown Student',
+                studentDiv: (user as any).div || 'A',
+                studentYear: (user as any).year || '1st Year',
+                studentAdmissionNumber: (user as any).admissionNumber || 'UNKNOWN',
+                status: status === 'attending' ? 'DECLARED' : 'ABSENT', // mapped values: DECLARED means pending verification by lead
+                createdAt: serverTimestamp()
+            });
+
+            alert(`Successfully marked as ${status}.`);
+        } catch (error) {
+            console.error("Error marking attendance: ", error);
+            alert("Failed to mark attendance.");
+        } finally {
             setIsLocating(null);
-            alert("Location Verified! Attendance Marked Successfully.");
-        }, 1500);
+        }
     };
 
     return (
@@ -70,7 +124,9 @@ export const StudentAttendance: React.FC = () => {
             {activeTab === 'active' && (
                 <div className="grid md:grid-cols-2 gap-6">
                     {activeMeetings.length > 0 ? (
-                        activeMeetings.map(meeting => (
+                        activeMeetings.map(meeting => {
+                            const hasMarked = historyRecords.find(r => r.meetingId === meeting.id);
+                            return (
                             <div key={meeting.id} className="attendance-card bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all relative">
                                 {/* Status Stripe */}
                                 <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
@@ -102,25 +158,33 @@ export const StudentAttendance: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <Button
-                                        fullWidth
-                                        onClick={() => handleDeclare(meeting.id)}
-                                        disabled={isLocating === meeting.id}
-                                        className={isLocating === meeting.id ? "bg-slate-100 text-slate-500 border-slate-200" : "bg-primary-600 hover:bg-primary-700 shadow-primary-500/20"}
-                                    >
-                                        {isLocating === meeting.id ? (
-                                            <span className="flex items-center gap-2">
-                                                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                                Verifying Location...
-                                            </span>
-                                        ) : "📍 Declare Presence"}
-                                    </Button>
-                                    <p className="text-center text-xs text-slate-400 mt-3">
-                                        Requires location permission
-                                    </p>
+                                    {hasMarked ? (
+                                        <div className="py-2 px-4 bg-slate-50 border border-slate-200 rounded-lg text-center text-slate-600 text-sm font-bold">
+                                            You marked: {hasMarked.status}
+                                        </div>
+                                    ) : (
+                                        <div className="flex gap-3">
+                                            <Button
+                                                fullWidth
+                                                onClick={() => handleDeclare(meeting.id, 'attending')}
+                                                disabled={isLocating === meeting.id}
+                                                className={isLocating === meeting.id ? "bg-slate-100 text-slate-500 border-slate-200" : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20"}
+                                            >
+                                                Attending
+                                            </Button>
+                                            <Button
+                                                fullWidth
+                                                onClick={() => handleDeclare(meeting.id, 'not attending')}
+                                                disabled={isLocating === meeting.id}
+                                                className={isLocating === meeting.id ? "bg-slate-100 text-slate-500 border-slate-200" : "bg-red-600 hover:bg-red-700 shadow-red-500/20"}
+                                            >
+                                                Not Attending
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        ))
+                        )})
                     ) : (
                         <div className="col-span-full py-16 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
                             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-3xl mx-auto mb-4 shadow-sm text-slate-300">😴</div>
@@ -140,24 +204,20 @@ export const StudentAttendance: React.FC = () => {
                                 <tr>
                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Meeting</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Time</th>
                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {history.map(record => {
-                                    const meeting = MOCK_MEETINGS.find(m => m.id === record.meetingId);
+                                {historyRecords.map(record => {
+                                    // Normally we join with meeting details. For display, we can show basic known details.
                                     return (
                                         <tr key={record.id} className="hover:bg-slate-50 transition-colors">
                                             <td className="px-6 py-4 text-sm font-mono text-slate-500">
-                                                {meeting?.date}
+                                                {/* Requires full meeting fetch to show exact date/name if not cached, simplistic display here */}
+                                                Meeting ID: {record.meetingId}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="text-sm font-bold text-slate-800">{meeting?.title}</div>
-                                                <div className="text-xs text-slate-500">{meeting?.clubName}</div>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-slate-500">
-                                                {meeting?.startTime}
+                                                <div className="text-sm font-bold text-slate-800">History</div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <Badge status={record.status} size="sm" />
