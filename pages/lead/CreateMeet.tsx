@@ -189,11 +189,17 @@ export const CreateMeet: React.FC = () => {
       } else {
         throw new Error(data.message || 'SMS failed');
       }
-    } catch {
-      // Fallback: open WhatsApp
-      window.open(`https://wa.me/${selectedProf.phone.replace('+', '')}?text=${encodeURIComponent(smsText)}`);
-      setSmsStatus('error');
-      setSmsMessage('Backend unreachable — opened WhatsApp as fallback.');
+    } catch (error) {
+      // Fallback: use your custom WhatsApp service
+      try {
+        // Assuming your service handles the async call or URL formatting
+        await sendWhatsApp(selectedProf.phone, smsText);
+        setSmsStatus('error'); // You might want to change this to 'success' or a new 'warning' state
+        setSmsMessage('Backend unreachable — routed via WhatsApp fallback.');
+      } catch (waError) {
+        setSmsStatus('error');
+        setSmsMessage('Both SMS backend and WhatsApp fallback failed.');
+      }
     }
   };
 
