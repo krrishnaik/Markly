@@ -99,9 +99,9 @@ export const LeadMarking: React.FC = () => {
             return;
         }
 
-        const headers = ["Name,Division,Year,Admission No"];
+        const headers = ["Name,Division,Year,Department,Admission No"];
         const rows = presentStudents.map(r => 
-            `"${r.studentName || ''}","${r.studentDiv || ''}","${r.studentYear || ''}","${r.studentAdmissionNumber || ''}"`
+            `"${r.studentName || ''}","${r.studentDiv || ''}","${r.studentYear || ''}","${r.studentDepartment || ''}","${r.studentAdmissionNumber || ''}"`
         );
         const csvContent = "data:text/csv;charset=utf-8," + headers.concat(rows).join("\n");
         const encodedUri = encodeURI(csvContent);
@@ -194,7 +194,7 @@ export const LeadMarking: React.FC = () => {
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
                                 <th className="px-6 py-4">Student Name</th>
-                                <th className="px-6 py-4">Div & Year</th>
+                                <th className="px-6 py-4">Details (Div, Year, Dept)</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
@@ -203,12 +203,28 @@ export const LeadMarking: React.FC = () => {
                             {records.map((record) => (
                                 <tr key={record.id} className="attendance-row hover:bg-slate-50 transition-colors group">
                                     <td className="px-6 py-4">
-                                        <div className="font-bold text-slate-800">{record.studentName}</div>
-                                        <div className="text-xs text-slate-400 font-mono">{record.studentAdmissionNumber || 'Admission No'}</div>
+                                        <div className="font-bold text-slate-800 leading-tight">{record.studentName}</div>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono font-bold">{record.studentAdmissionNumber || 'NO ID'}</span>
+                                            {record.missedLecture && (
+                                                <span className="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded font-bold">
+                                                    Missing: {record.missedLecture}
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="text-sm text-slate-600">Div: <span className="font-bold">{record.studentDiv || '-'}</span></div>
-                                        <div className="text-sm text-slate-600">Year: <span className="font-bold">{record.studentYear || '-'}</span></div>
+                                        <div className="flex flex-wrap gap-2">
+                                            <div className="bg-primary-50 text-primary-700 px-2 py-0.5 rounded text-[11px] font-bold border border-primary-100">
+                                                Div: {record.studentDiv || '-'}
+                                            </div>
+                                            <div className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-[11px] font-bold border border-indigo-100">
+                                                Year: {record.studentYear || '-'}
+                                            </div>
+                                            <div className="bg-slate-50 text-slate-700 px-2 py-0.5 rounded text-[11px] font-bold border border-slate-200">
+                                                {record.studentDepartment || 'Dept N/A'}
+                                            </div>
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <Badge status={record.status} size="sm" />

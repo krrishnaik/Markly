@@ -27,6 +27,7 @@ interface AttendanceRecord {
   studentAdmissionNumber: string;
   studentDiv?: string;
   studentYear?: string;
+  studentDepartment?: string;
   missedLecture: string;   // The academic class the student is missing
   status: string;
 }
@@ -250,6 +251,7 @@ export const FacultyConflicts: React.FC = () => {
                               {rec.studentAdmissionNumber || rec.studentId}
                               {rec.studentDiv && ` · Div ${rec.studentDiv}`}
                               {rec.studentYear && ` · ${rec.studentYear}`}
+                              {rec.studentDepartment && ` · ${rec.studentDepartment}`}
                             </div>
                           </div>
                         </div>

@@ -97,6 +97,9 @@ export const MOCK_ATTENDANCE: AttendanceRecord[] = [
     studentId: 'u1', 
     studentName: 'Alex Student', 
     studentAdmissionNumber: '2024HE0064', 
+    studentDiv: 'A',
+    studentYear: '3rd Year',
+    studentDepartment: 'Computer Engineering',
     status: AttendanceStatus.PRESENT, 
     timestamp: '2026-10-25T14:05:00' 
   },

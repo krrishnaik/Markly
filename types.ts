@@ -24,6 +24,7 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  department?: string;
   // Student specific fields
   admissionNumber?: string; 
   division?: string;
@@ -56,8 +57,13 @@ export interface AttendanceRecord {
   studentId: string;
   studentName: string;
   studentAdmissionNumber?: string;
+  studentDiv?: string;
+  studentYear?: string;
+  studentDepartment?: string;
+  missedLecture?: string;
   status: AttendanceStatus;
-  timestamp: string;
+  timestamp?: any;
+  createdAt?: any;
 }
 
 export interface Announcement {

@@ -44,12 +44,12 @@ export const Profile: React.FC = () => {
                         </span>
                         {user.role === UserRole.STUDENT && (
                             <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                                {(user as any).year || '1st Year'}
+                                {(user as any).collegeYear || (user as any).year || '1st Year'}
                             </span>
                         )}
                         {(user.role === UserRole.FACULTY || user.role === UserRole.STUDENT) && (
                             <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                                {(user as any).branch || 'General'}
+                                {user.department || (user as any).branch || 'General'}
                             </span>
                         )}
                     </div>
@@ -105,8 +105,10 @@ const StudentView: React.FC<{ user: any }> = ({ user }) => {
                         <h3 className="font-bold text-slate-800 text-lg border-b border-slate-100 pb-3">Academic Info</h3>
                         <div className="space-y-4">
                             <InfoRow label="Admission No" value={user.admissionNumber || 'N/A'} />
-                            <InfoRow label="Department" value={user.branch || 'N/A'} />
-                            <InfoRow label="Year / Batch" value={user.year || 'N/A'} />
+                            <InfoRow label="Department" value={user.department || user.branch || 'N/A'} />
+                            <InfoRow label="Year / Batch" value={user.collegeYear || user.year || 'N/A'} />
+                            <InfoRow label="Division" value={user.division || 'N/A'} />
+                            <InfoRow label="Committee" value={user.committee || 'N/A'} />
                             <InfoRow label="Status" value="Active Student" />
                         </div>
                     </div>
@@ -258,7 +260,7 @@ const FacultyView: React.FC<{ user: any }> = ({ user }) => {
                 <h3 className="font-bold text-slate-800 text-lg border-b border-slate-100 pb-3 mb-4">Faculty Information</h3>
                 <div className="grid md:grid-cols-4 gap-6">
                     <InfoRow label="Designation" value="Assistant Professor" />
-                    <InfoRow label="Department" value={user.branch || 'Engineering'} />
+                    <InfoRow label="Department" value={user.department || user.branch || 'Engineering'} />
                     <InfoRow label="Employee ID" value="FAC-0042" />
                     <InfoRow label="Role" value="Club Coordinator" />
                 </div>

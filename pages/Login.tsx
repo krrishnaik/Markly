@@ -9,8 +9,8 @@ import { useNavigate } from 'react-router-dom';
 declare const gsap: any;
 
 // --- SECRETS (In a production app, these would go in your .env file) ---
-const FACULTY_SECRET_CODE = "MARKLY-FACULTY-26";
-const LEAD_SECRET_CODE = "MARKLY-LEAD-26";
+const FACULTY_SECRET_CODE = "PHCET2026";
+const LEAD_SECRET_CODE = "PHCET2026";
 
 export const Login: React.FC = () => {
     const { login, register, isLoading } = useAuth();
@@ -35,6 +35,7 @@ export const Login: React.FC = () => {
     const [division, setDivision] = useState('');
     const [collegeYear, setCollegeYear] = useState('First Year');
     const [committee, setCommittee] = useState(CLUBS[0].name);
+    const [department, setDepartment] = useState('Computer Engineering');
 
     // --- UI/UX State ---
     const [error, setError] = useState<string | null>(null);
@@ -117,7 +118,8 @@ export const Login: React.FC = () => {
                         admissionNumber: role === UserRole.STUDENT ? admissionNumber : undefined,
                         division: role === UserRole.STUDENT ? division : undefined,
                         collegeYear: role === UserRole.STUDENT ? collegeYear : undefined,
-                        committee: role === UserRole.STUDENT ? committee : undefined
+                        committee: role === UserRole.STUDENT ? committee : undefined,
+                        department: department
                     }
                 );
             }
@@ -230,6 +232,30 @@ export const Login: React.FC = () => {
                                         placeholder="John Doe"
                                         className="flex-1 bg-transparent border-none focus:ring-0 text-slate-800 placeholder:text-slate-400 outline-none text-sm font-medium"
                                     />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Department Field - SHOWS ON ALL SIGN UPS */}
+                        {!isLoginMode && (
+                            <div className="space-y-1.5 animate-fadeIn">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Department</label>
+                                <div className="relative">
+                                    <select
+                                        value={department}
+                                        onChange={(e) => setDepartment(e.target.value)}
+                                        className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium text-sm"
+                                    >
+                                        <option value="Computer Engineering">Computer Engineering</option>
+                                        <option value="Information Technology">Information Technology</option>
+                                        <option value="AI & Data Science">AI & Data Science</option>
+                                        <option value="Electronics Engineering">Electronics Engineering</option>
+                                        <option value="Mechanical Engineering">Mechanical Engineering</option>
+                                        <option value="Civil Engineering">Civil Engineering</option>
+                                    </select>
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                    </div>
                                 </div>
                             </div>
                         )}

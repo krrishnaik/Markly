@@ -14,7 +14,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string, name: string, role: UserRole, extraAuthData?: { clubId?: string, admissionNumber?: string, division?: string, collegeYear?: string, committee?: string }) => Promise<boolean>;
+  register: (email: string, password: string, name: string, role: UserRole, extraAuthData?: { clubId?: string, admissionNumber?: string, division?: string, collegeYear?: string, committee?: string, department?: string }) => Promise<boolean>;
   logout: () => Promise<void>;
   isLoading: boolean;
   isInitialized: boolean;
@@ -52,7 +52,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                   name: userData.name,
                   email: userData.email,
                   role: userData.role as UserRole,
-                  clubId: userData.clubId
+                  clubId: userData.clubId,
+                  admissionNumber: userData.admissionNumber,
+                  division: userData.division,
+                  collegeYear: userData.collegeYear,
+                  committee: userData.committee,
+                  department: userData.department
                 });
               }
             } catch (error) {
@@ -85,7 +90,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           name: userData.name,
           email: userData.email,
           role: userData.role as UserRole,
-          clubId: userData.clubId
+          clubId: userData.clubId,
+          admissionNumber: userData.admissionNumber,
+          division: userData.division,
+          collegeYear: userData.collegeYear,
+          committee: userData.committee,
+          department: userData.department
         });
       }
 
@@ -99,7 +109,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // --- REAL REGISTRATION LOGIC ---
-  const register = async (email: string, password: string, name: string, role: UserRole, extraAuthData?: { clubId?: string, admissionNumber?: string, division?: string, collegeYear?: string, committee?: string }): Promise<boolean> => {
+  const register = async (email: string, password: string, name: string, role: UserRole, extraAuthData?: { clubId?: string, admissionNumber?: string, division?: string, collegeYear?: string, committee?: string, department?: string }): Promise<boolean> => {
     setIsLoading(true);
     try {
       // 1. Create the user in Firebase Authentication
@@ -115,7 +125,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         ...(extraAuthData?.admissionNumber && { admissionNumber: extraAuthData.admissionNumber }),
         ...(extraAuthData?.division && { division: extraAuthData.division }),
         ...(extraAuthData?.collegeYear && { collegeYear: extraAuthData.collegeYear }),
-        ...(extraAuthData?.committee && { committee: extraAuthData.committee })
+        ...(extraAuthData?.committee && { committee: extraAuthData.committee }),
+        ...(extraAuthData?.department && { department: extraAuthData.department })
       };
 
       await setDoc(doc(db, 'users', firebaseUser.uid), newUserData);
@@ -130,7 +141,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         admissionNumber: newUserData.admissionNumber,
         division: newUserData.division,
         collegeYear: newUserData.collegeYear,
-        committee: newUserData.committee
+        committee: newUserData.committee,
+        department: newUserData.department
       });
 
       setIsLoading(false);
