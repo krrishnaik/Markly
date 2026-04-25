@@ -31,6 +31,10 @@ export const Login: React.FC = () => {
     const [password, setPassword] = useState('');
     const [clubId, setClubId] = useState(CLUBS[0].id);
     const [accessCode, setAccessCode] = useState(''); // NEW: Security code state
+    const [admissionNumber, setAdmissionNumber] = useState('');
+    const [division, setDivision] = useState('');
+    const [collegeYear, setCollegeYear] = useState('First Year');
+    const [committee, setCommittee] = useState(CLUBS[0].name);
 
     // --- UI/UX State ---
     const [error, setError] = useState<string | null>(null);
@@ -58,6 +62,9 @@ export const Login: React.FC = () => {
         setAccessCode(''); // Clear the access code if they switch roles
         if (role === UserRole.LEAD) {
             setClubId(CLUBS[0].id);
+        }
+        if (role === UserRole.STUDENT) {
+            setCommittee(CLUBS[0].name);
         }
     }, [role, isLoginMode]);
 
@@ -105,7 +112,13 @@ export const Login: React.FC = () => {
                     password, 
                     name, 
                     role, 
-                    role === UserRole.LEAD ? clubId : undefined
+                    {
+                        clubId: role === UserRole.LEAD ? clubId : undefined,
+                        admissionNumber: role === UserRole.STUDENT ? admissionNumber : undefined,
+                        division: role === UserRole.STUDENT ? division : undefined,
+                        collegeYear: role === UserRole.STUDENT ? collegeYear : undefined,
+                        committee: role === UserRole.STUDENT ? committee : undefined
+                    }
                 );
             }
 
@@ -217,6 +230,72 @@ export const Login: React.FC = () => {
                                         placeholder="John Doe"
                                         className="flex-1 bg-transparent border-none focus:ring-0 text-slate-800 placeholder:text-slate-400 outline-none text-sm font-medium"
                                     />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Student Specific Fields - ONLY ON SIGN UP */}
+                        {!isLoginMode && role === UserRole.STUDENT && (
+                            <div className="grid grid-cols-2 gap-4 animate-fadeIn">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Admission No.</label>
+                                    <div className={`flex items-center border rounded-xl px-4 py-3 transition-colors bg-slate-50 ${focusedField === 'admissionNumber' ? 'border-primary-500 ring-4 ring-primary-500/10 bg-white' : 'border-slate-200'}`}>
+                                        <input
+                                            type="text"
+                                            required={!isLoginMode}
+                                            value={admissionNumber}
+                                            onFocus={() => setFocusedField('admissionNumber')}
+                                            onBlur={() => setFocusedField(null)}
+                                            onChange={(e) => setAdmissionNumber(e.target.value)}
+                                            placeholder="e.g. 2023001"
+                                            className="flex-1 w-full bg-transparent border-none focus:ring-0 text-slate-800 placeholder:text-slate-400 outline-none text-sm font-medium"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Division</label>
+                                    <div className={`flex items-center border rounded-xl px-4 py-3 transition-colors bg-slate-50 ${focusedField === 'division' ? 'border-primary-500 ring-4 ring-primary-500/10 bg-white' : 'border-slate-200'}`}>
+                                        <input
+                                            type="text"
+                                            required={!isLoginMode}
+                                            value={division}
+                                            onFocus={() => setFocusedField('division')}
+                                            onBlur={() => setFocusedField(null)}
+                                            onChange={(e) => setDivision(e.target.value)}
+                                            placeholder="e.g. A"
+                                            className="flex-1 w-full bg-transparent border-none focus:ring-0 text-slate-800 placeholder:text-slate-400 outline-none text-sm font-medium"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">College Year</label>
+                                    <div className="relative">
+                                        <select
+                                            value={collegeYear}
+                                            onChange={(e) => setCollegeYear(e.target.value)}
+                                            className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium text-sm"
+                                        >
+                                            <option value="First Year">First Year</option>
+                                            <option value="Second Year">Second Year</option>
+                                            <option value="Third Year">Third Year</option>
+                                            <option value="Fourth Year">Fourth Year</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Committee</label>
+                                    <div className="relative">
+                                        <select
+                                            value={committee}
+                                            onChange={(e) => setCommittee(e.target.value)}
+                                            className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium text-sm"
+                                        >
+                                            <option value="None">None</option>
+                                            {CLUBS.map(c => (
+                                                <option key={c.id} value={c.name}>{c.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         )}

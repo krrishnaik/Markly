@@ -14,7 +14,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string, name: string, role: UserRole, clubId?: string) => Promise<boolean>;
+  register: (email: string, password: string, name: string, role: UserRole, extraAuthData?: { clubId?: string, admissionNumber?: string, division?: string, collegeYear?: string, committee?: string }) => Promise<boolean>;
   logout: () => Promise<void>;
   isLoading: boolean;
   isInitialized: boolean;
@@ -99,7 +99,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // --- REAL REGISTRATION LOGIC ---
-  const register = async (email: string, password: string, name: string, role: UserRole, clubId?: string): Promise<boolean> => {
+  const register = async (email: string, password: string, name: string, role: UserRole, extraAuthData?: { clubId?: string, admissionNumber?: string, division?: string, collegeYear?: string, committee?: string }): Promise<boolean> => {
     setIsLoading(true);
     try {
       // 1. Create the user in Firebase Authentication
@@ -111,7 +111,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         name,
         email,
         role,
-        ...(clubId && { clubId })
+        ...(extraAuthData?.clubId && { clubId: extraAuthData.clubId }),
+        ...(extraAuthData?.admissionNumber && { admissionNumber: extraAuthData.admissionNumber }),
+        ...(extraAuthData?.division && { division: extraAuthData.division }),
+        ...(extraAuthData?.collegeYear && { collegeYear: extraAuthData.collegeYear }),
+        ...(extraAuthData?.committee && { committee: extraAuthData.committee })
       };
 
       await setDoc(doc(db, 'users', firebaseUser.uid), newUserData);
@@ -122,7 +126,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         name: newUserData.name,
         email: newUserData.email,
         role: newUserData.role,
-        clubId: newUserData.clubId
+        clubId: newUserData.clubId,
+        admissionNumber: newUserData.admissionNumber,
+        division: newUserData.division,
+        collegeYear: newUserData.collegeYear,
+        committee: newUserData.committee
       });
 
       setIsLoading(false);

@@ -397,17 +397,25 @@ const FacultyDashboard = () => {
   const navigate  = useNavigate();
   const { user }  = useAuth();
 
-  const [recentActivity, setRecentActivity] = useState<Meeting[]>([]);
-  const [stats,          setStats]          = useState({ totalMeetings: 0, activeClubs: 0 });
-  const [loading,        setLoading]        = useState(true);
+  const [scheduledMeetings, setScheduledMeetings] = useState<Meeting[]>([]);
+  const [recentActivity,    setRecentActivity]    = useState<Meeting[]>([]);
+  const [pendingConflicts,  setPendingConflicts]  = useState(0);
+  const [stats,             setStats]             = useState({ totalMeetings: 0, activeClubs: 0 });
+  const [loading,           setLoading]           = useState(true);
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'meetings'), snap => {
+    // Real-time meetings listener
+    const unsubMeetings = onSnapshot(collection(db, 'meetings'), snap => {
       const meetings = snap.docs.map(docToMeeting);
       setStats({
         totalMeetings: meetings.length,
         activeClubs:   new Set(meetings.map(m => m.clubId)).size,
       });
+      setScheduledMeetings(
+        meetings
+          .filter(m => (m.status || '').toLowerCase() === 'scheduled')
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      );
       setRecentActivity(
         meetings
           .filter(m => (m.status || '').toLowerCase() === 'completed')
@@ -417,38 +425,94 @@ const FacultyDashboard = () => {
       setLoading(false);
       animateCards();
     });
-    return () => unsub();
+
+    // Real-time attendance listener for pending conflicts count
+    const unsubAttendance = onSnapshot(
+      collection(db, 'attendance'),
+      snap => {
+        const pending = snap.docs.filter(d => {
+          const s = (d.data().status || '').toUpperCase();
+          return s === 'DECLARED';
+        }).length;
+        setPendingConflicts(pending);
+      }
+    );
+
+    return () => { unsubMeetings(); unsubAttendance(); };
   }, []);
 
   return (
     <div className="space-y-10">
       <SectionHeader
         title="Faculty Overview"
-        subtitle={`Prof. ${user?.name?.split(' ')[1] || ''} • ${(user as any)?.branch || 'General'}`}
+        subtitle={`Prof. ${user?.name?.split(' ')[1] || user?.name || ''} • ${(user as any)?.branch || 'General'}`}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="gsap-card p-6 bg-indigo-50 border border-indigo-100 rounded-xl flex items-start gap-4">
           <div className="w-12 h-12 rounded-lg bg-white text-indigo-600 flex items-center justify-center border border-indigo-100 shadow-sm text-xl">📊</div>
           <div>
             <h4 className="text-lg font-bold text-indigo-900">System Activity</h4>
             <p className="text-indigo-700 text-sm mt-1">
-              Tracking {stats.totalMeetings} total meetings across {stats.activeClubs} active clubs.
+              {stats.totalMeetings} total meetings across {stats.activeClubs} active clubs.
             </p>
-            <Button variant="ghost" size="sm" className="mt-3 text-indigo-700 hover:bg-indigo-100 -ml-2 font-semibold" onClick={() => navigate('/reports')}>
-              View Master Reports →
-            </Button>
           </div>
         </div>
         <div className="gsap-card p-6 bg-emerald-50 border border-emerald-100 rounded-xl flex items-start gap-4">
-          <div className="w-12 h-12 rounded-lg bg-white text-emerald-600 flex items-center justify-center border border-emerald-100 shadow-sm text-xl">✅</div>
+          <div className="w-12 h-12 rounded-lg bg-white text-emerald-600 flex items-center justify-center border border-emerald-100 shadow-sm text-xl">📅</div>
           <div>
-            <h4 className="text-lg font-bold text-emerald-900">Health Status</h4>
-            <p className="text-emerald-700 text-sm mt-1">Real-time attendance syncing is active. No conflicts reported.</p>
+            <h4 className="text-lg font-bold text-emerald-900">Scheduled</h4>
+            <p className="text-emerald-700 text-sm mt-1">
+              {scheduledMeetings.length} upcoming meeting{scheduledMeetings.length !== 1 ? 's' : ''} across all clubs.
+            </p>
+          </div>
+        </div>
+        <div
+          className="gsap-card p-6 bg-amber-50 border border-amber-100 rounded-xl flex items-start gap-4 cursor-pointer hover:shadow-md transition-all"
+          onClick={() => navigate('/conflicts')}
+        >
+          <div className="w-12 h-12 rounded-lg bg-white text-amber-600 flex items-center justify-center border border-amber-100 shadow-sm text-xl relative">
+            ⚠️
+            {pendingConflicts > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                {pendingConflicts}
+              </span>
+            )}
+          </div>
+          <div>
+            <h4 className="text-lg font-bold text-amber-900">Conflicts</h4>
+            <p className="text-amber-700 text-sm mt-1">
+              {pendingConflicts > 0
+                ? <><span className="font-bold text-red-600">{pendingConflicts}</span> pending OD requests need review.</>  
+                : 'No pending conflicts. All clear ✅'
+              }
+            </p>
+            <span className="text-xs text-amber-600 font-semibold mt-1 inline-block">View Conflicts →</span>
           </div>
         </div>
       </div>
 
+      {/* Live Scheduled Meetings */}
+      <section>
+        <div className="flex items-center gap-2 mb-6">
+          <span className="w-1.5 h-6 bg-primary-500 rounded-full" />
+          <h3 className="text-xl font-bold text-slate-800">Live Scheduled Meetings</h3>
+          {scheduledMeetings.length > 0 && (
+            <span className="ml-2 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full animate-pulse">
+              {scheduledMeetings.length} Active
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {loading ? <LoadingSpinner /> : scheduledMeetings.length > 0
+            ? scheduledMeetings.map(m => <MeetingCard key={m.id} meeting={m} />)
+            : <EmptyState message="No meetings currently scheduled across all clubs." />
+          }
+        </div>
+      </section>
+
+      {/* Recently Completed */}
       <div className="gsap-card bg-bg-card rounded-xl border border-slate-200 shadow-card p-8">
         <div className="flex justify-between items-center mb-6">
           <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
@@ -462,17 +526,17 @@ const FacultyDashboard = () => {
               <div key={a.id} className="p-5 bg-bg-DEFAULT border border-slate-200 rounded-xl flex items-start gap-5 hover:border-slate-300 transition-colors">
                 <div className="p-3 bg-white rounded-lg text-slate-500 shadow-sm border border-slate-100">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-800">{a.title} ({a.clubName})</h4>
+                  <h4 className="font-bold text-slate-800">{a.title} <span className="text-slate-500 font-normal">({a.clubName})</span></h4>
                   <p className="text-sm text-slate-600 mt-1 leading-relaxed">
-                    Concluded at venue: <span className="font-medium text-slate-800">{a.location}</span>.
+                    Concluded at: <span className="font-medium text-slate-800">{a.location}</span>
                   </p>
                   <div className="mt-3 flex items-center gap-2 text-xs font-medium text-slate-500">
                     <span className="bg-slate-200 px-2 py-1 rounded">{a.date}</span>
-                    <span>{a.startTime} - {a.endTime}</span>
+                    <span>{a.startTime} – {a.endTime}</span>
                   </div>
                 </div>
               </div>

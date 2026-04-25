@@ -26,6 +26,9 @@ export interface User {
   role: UserRole;
   // Student specific fields
   admissionNumber?: string; 
+  division?: string;
+  collegeYear?: string;
+  committee?: string;
   branch?: string;          
   year?: string;
   joinedClubIds?: string[]; 
