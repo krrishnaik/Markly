@@ -14,7 +14,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string, name: string, role: UserRole, extraAuthData?: { clubId?: string, admissionNumber?: string, division?: string, collegeYear?: string, committee?: string, department?: string }) => Promise<boolean>;
+  register: (email: string, password: string, name: string, role: UserRole, extraAuthData?: { clubId?: string, admissionNumber?: string, division?: string, collegeYear?: string, committee?: string, department?: string, position?: string }) => Promise<boolean>;
   logout: () => Promise<void>;
   isLoading: boolean;
   isInitialized: boolean;
@@ -57,7 +57,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                   division: userData.division,
                   collegeYear: userData.collegeYear,
                   committee: userData.committee,
-                  department: userData.department
+                  department: userData.department,
+                  position: userData.position
                 });
               }
             } catch (error) {
@@ -95,7 +96,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           division: userData.division,
           collegeYear: userData.collegeYear,
           committee: userData.committee,
-          department: userData.department
+          department: userData.department,
+          position: userData.position
         });
       }
 
@@ -109,7 +111,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // --- REAL REGISTRATION LOGIC ---
-  const register = async (email: string, password: string, name: string, role: UserRole, extraAuthData?: { clubId?: string, admissionNumber?: string, division?: string, collegeYear?: string, committee?: string, department?: string }): Promise<boolean> => {
+  const register = async (email: string, password: string, name: string, role: UserRole, extraAuthData?: { clubId?: string, admissionNumber?: string, division?: string, collegeYear?: string, committee?: string, department?: string, position?: string }): Promise<boolean> => {
     setIsLoading(true);
     try {
       // 1. Create the user in Firebase Authentication
@@ -126,7 +128,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         ...(extraAuthData?.division && { division: extraAuthData.division }),
         ...(extraAuthData?.collegeYear && { collegeYear: extraAuthData.collegeYear }),
         ...(extraAuthData?.committee && { committee: extraAuthData.committee }),
-        ...(extraAuthData?.department && { department: extraAuthData.department })
+        ...(extraAuthData?.department && { department: extraAuthData.department }),
+        ...(extraAuthData?.position && { position: extraAuthData.position })
       };
 
       await setDoc(doc(db, 'users', firebaseUser.uid), newUserData);
@@ -142,7 +145,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         division: newUserData.division,
         collegeYear: newUserData.collegeYear,
         committee: newUserData.committee,
-        department: newUserData.department
+        department: newUserData.department,
+        position: newUserData.position
       });
 
       setIsLoading(false);

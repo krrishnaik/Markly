@@ -36,6 +36,7 @@ export const Login: React.FC = () => {
     const [collegeYear, setCollegeYear] = useState('First Year');
     const [committee, setCommittee] = useState(CLUBS[0].name);
     const [department, setDepartment] = useState('Computer Engineering');
+    const [position, setPosition] = useState('');
 
     // --- UI/UX State ---
     const [error, setError] = useState<string | null>(null);
@@ -115,10 +116,11 @@ export const Login: React.FC = () => {
                     role, 
                     {
                         clubId: role === UserRole.LEAD ? clubId : undefined,
-                        admissionNumber: role === UserRole.STUDENT ? admissionNumber : undefined,
-                        division: role === UserRole.STUDENT ? division : undefined,
-                        collegeYear: role === UserRole.STUDENT ? collegeYear : undefined,
+                        admissionNumber: (role === UserRole.STUDENT || role === UserRole.LEAD) ? admissionNumber : undefined,
+                        division: (role === UserRole.STUDENT || role === UserRole.LEAD) ? division : undefined,
+                        collegeYear: (role === UserRole.STUDENT || role === UserRole.LEAD) ? collegeYear : undefined,
                         committee: role === UserRole.STUDENT ? committee : undefined,
+                        position: role === UserRole.LEAD ? position : undefined,
                         department: department
                     }
                 );
@@ -260,8 +262,8 @@ export const Login: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Student Specific Fields - ONLY ON SIGN UP */}
-                        {!isLoginMode && role === UserRole.STUDENT && (
+                        {/* Student & Lead Specific Fields - ONLY ON SIGN UP */}
+                        {!isLoginMode && (role === UserRole.STUDENT || role === UserRole.LEAD) && (
                             <div className="grid grid-cols-2 gap-4 animate-fadeIn">
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Admission No.</label>
@@ -308,21 +310,59 @@ export const Login: React.FC = () => {
                                         </select>
                                     </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Committee</label>
-                                    <div className="relative">
-                                        <select
-                                            value={committee}
-                                            onChange={(e) => setCommittee(e.target.value)}
-                                            className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium text-sm"
-                                        >
-                                            <option value="None">None</option>
-                                            {CLUBS.map(c => (
-                                                <option key={c.id} value={c.name}>{c.name}</option>
-                                            ))}
-                                        </select>
+                                {role === UserRole.STUDENT && (
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Committee</label>
+                                        <div className="relative">
+                                            <select
+                                                value={committee}
+                                                onChange={(e) => setCommittee(e.target.value)}
+                                                className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium text-sm"
+                                            >
+                                                <option value="None">None</option>
+                                                {CLUBS.map(c => (
+                                                    <option key={c.id} value={c.name}>{c.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
+                                {role === UserRole.LEAD && (
+                                    <>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Select Club / Committee</label>
+                                            <div className="relative">
+                                                <select
+                                                    value={clubId}
+                                                    onChange={(e) => setClubId(e.target.value)}
+                                                    className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium text-sm"
+                                                >
+                                                    {CLUBS.map(c => (
+                                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                                    ))}
+                                                </select>
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1.5 col-span-2">
+                                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Position in Club</label>
+                                            <div className={`flex items-center border rounded-xl px-4 py-3 transition-colors bg-slate-50 ${focusedField === 'position' ? 'border-primary-500 ring-4 ring-primary-500/10 bg-white' : 'border-slate-200'}`}>
+                                                <input
+                                                    type="text"
+                                                    required={!isLoginMode}
+                                                    value={position}
+                                                    onFocus={() => setFocusedField('position')}
+                                                    onBlur={() => setFocusedField(null)}
+                                                    onChange={(e) => setPosition(e.target.value)}
+                                                    placeholder="e.g. Chair, Co-Chair, Treasurer"
+                                                    className="flex-1 w-full bg-transparent border-none focus:ring-0 text-slate-800 placeholder:text-slate-400 outline-none text-sm font-medium"
+                                                />
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
 
@@ -344,26 +384,7 @@ export const Login: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Conditional Club Selector (Lead Only) */}
-                        {role === UserRole.LEAD && (
-                            <div className="space-y-1.5 animate-fadeIn">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Select Club</label>
-                                <div className="relative">
-                                    <select
-                                        value={clubId}
-                                        onChange={(e) => setClubId(e.target.value)}
-                                        className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium"
-                                    >
-                                        {CLUBS.map(c => (
-                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                        ))}
-                                    </select>
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+
 
                         {/* NEW: Security Access Code (Only for Lead/Faculty during Sign Up) */}
                         {!isLoginMode && (role === UserRole.LEAD || role === UserRole.FACULTY) && (
