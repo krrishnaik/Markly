@@ -7,13 +7,17 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
+  loginWithGoogle: () => Promise<{success: boolean, status?: 'LOGGED_IN' | 'NEEDS_PROFILE', firebaseUser?: any}>;
+  completeGoogleAuth: (firebaseUser: any, role: UserRole, extraAuthData: any) => Promise<boolean>;
   register: (email: string, password: string, name: string, role: UserRole, extraAuthData?: { clubId?: string, admissionNumber?: string, division?: string, collegeYear?: string, committee?: string, department?: string, position?: string }) => Promise<boolean>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -158,6 +162,77 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // --- GOOGLE LOGIN/REGISTER LOGIC ---
+  const loginWithGoogle = async (): Promise<{success: boolean, status?: 'LOGGED_IN' | 'NEEDS_PROFILE', firebaseUser?: any}> => {
+    setIsLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+
+      const docRef = doc(db, 'users', firebaseUser.uid);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const userData = docSnap.data();
+        setUser({
+          id: firebaseUser.uid,
+          name: userData.name,
+          email: userData.email,
+          role: userData.role as UserRole,
+          clubId: userData.clubId,
+          admissionNumber: userData.admissionNumber,
+          division: userData.division,
+          collegeYear: userData.collegeYear,
+          committee: userData.committee,
+          department: userData.department,
+          position: userData.position
+        });
+        setIsLoading(false);
+        return { success: true, status: 'LOGGED_IN' };
+      } else {
+        setIsLoading(false);
+        return { success: true, status: 'NEEDS_PROFILE', firebaseUser };
+      }
+    } catch (error) {
+      console.error("Google Auth Error:", error);
+      setIsLoading(false);
+      return { success: false };
+    }
+  };
+
+  const completeGoogleAuth = async (firebaseUser: any, role: UserRole, extraAuthData: any): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const newUserData = {
+        name: extraAuthData.name || firebaseUser.displayName || 'Google User',
+        email: firebaseUser.email,
+        role: role,
+        ...(extraAuthData?.clubId && { clubId: extraAuthData.clubId }),
+        ...(extraAuthData?.admissionNumber && { admissionNumber: extraAuthData.admissionNumber }),
+        ...(extraAuthData?.division && { division: extraAuthData.division }),
+        ...(extraAuthData?.collegeYear && { collegeYear: extraAuthData.collegeYear }),
+        ...(extraAuthData?.committee && { committee: extraAuthData.committee }),
+        ...(extraAuthData?.department && { department: extraAuthData.department }),
+        ...(extraAuthData?.position && { position: extraAuthData.position })
+      };
+      
+      const docRef = doc(db, 'users', firebaseUser.uid);
+      await setDoc(docRef, newUserData);
+
+      setUser({
+        id: firebaseUser.uid,
+        ...newUserData
+      });
+      setIsLoading(false);
+      return true;
+    } catch (error) {
+       console.error("Complete Google Auth Error:", error);
+       setIsLoading(false);
+       return false;
+    }
+  };
+
   // --- REAL LOGOUT LOGIC ---
   const logout = async () => {
     setIsLoading(true);
@@ -172,7 +247,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isLoading, isInitialized }}>
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, completeGoogleAuth, register, logout, isLoading, isInitialized }}>
       {/* Wait for Firebase to initialize before rendering the app to prevent redirect bugs */}
       {!isInitialized ? (
         <div className="min-h-screen flex items-center justify-center bg-slate-50">
