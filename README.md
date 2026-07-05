@@ -75,22 +75,25 @@ npm start
 
 **Test Users:**
 
-- **Student User**
-  - username: student_1
-  - email: student@gmail.com
-  - password: student@123
+- **Student User - 1**
+  - email: shravanid@gmail.com
+  - password: shravani
+  
+- **Student User - 2**
+  - email: charle@gmail.com
+  - password: charle
+ 
+- **Student User - 3**
+  - email: priyanshu@gmail.com
+  - password: priyanshu
 
 - **Lead User**
-  - username: lead_1
-  - email: lead@gmail.com
-  - password: lead@123
+  - email: akansha@gmail.com
+  - password: akansha
 
 - **Faculty User**
-  - username: faculty_1
-  - email: faculty@gmail.com
-  - password: faculty@123
-
-*(Update the above with your actual test credentials if needed)*
+  - email: tejaswi@gmail.com
+  - password: tejaswi
 
 **Demo:**
 Video link - [Your Demo Video Link Here]
